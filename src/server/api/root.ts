@@ -9,6 +9,8 @@ import { progressRouter } from '@/server/api/routers/progress'
 import { achievementRouter } from '@/server/api/routers/achievement'
 import { evaluationRouter } from '@/server/api/routers/evaluation'
 import { dashboardRouter } from '@/server/api/routers/dashboard'
+import { calendarRouter } from '@/server/api/routers/calendar'
+import { settingsRouter } from '@/server/api/routers/settings'
 
 /**
  * This is the primary router for your server.
@@ -26,6 +28,8 @@ export const appRouter = createTRPCRouter({
   achievement: achievementRouter,
   evaluation: evaluationRouter,
   dashboard: dashboardRouter,
+  calendar: calendarRouter,
+  settings: settingsRouter,
 })
 
 // export type definition of API

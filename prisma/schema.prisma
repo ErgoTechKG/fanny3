@@ -30,6 +30,13 @@ model User {
   studentAchievements Achievement[] @relation("StudentAchievements")
   advisorProjects Project[] @relation("AdvisorProjects")
   
+  // New relations for missing pages
+  researchLogs    ResearchLog[]
+  professorFeedback ProfessorFeedback[]
+  createdEvents   Event[]   @relation("CreatedEvents")
+  eventAttendances EventAttendee[]
+  userSettings    UserSettings?
+  
   // NextAuth relations
   accounts        Account[]
   sessions        Session[]
@@ -143,6 +150,11 @@ model Project {
   progress    Progress[]
   milestones  Milestone[]
   progressReports ProgressReport[]
+  
+  // New relations for missing pages
+  researchLogs ResearchLog[]
+  projectMilestones ProjectMilestone[]
+  events      Event[]
   
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
@@ -294,6 +306,198 @@ model Evaluation {
   @@unique([studentId, year, semester])
   @@index([studentId])
   @@index([year, semester])
+}
+
+// New models for missing pages implementation
+
+model ResearchLog {
+  id          String   @id @default(cuid())
+  studentId   String
+  projectId   String
+  content     String   @db.Text
+  type        LogType
+  weekNumber  Int?     // For 4-week summaries
+  attachments String[]
+  
+  student     User     @relation(fields: [studentId], references: [id])
+  project     Project  @relation(fields: [projectId], references: [id])
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  @@index([studentId])
+  @@index([projectId])
+  @@index([type])
+}
+
+enum LogType {
+  DAILY
+  WEEKLY
+  MONTHLY
+  SUMMARY     // 4-week summary
+}
+
+model ProjectMilestone {
+  id          String   @id @default(cuid())
+  projectId   String
+  name        String
+  nameEn      String?
+  type        MilestoneType
+  status      MilestoneProgressStatus @default(PENDING)
+  alertLevel  AlertLevel @default(GREEN)
+  dueDate     DateTime
+  completedAt DateTime?
+  
+  project     Project  @relation(fields: [projectId], references: [id])
+  feedback    ProfessorFeedback[]
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  @@index([projectId])
+  @@index([status])
+  @@index([alertLevel])
+}
+
+enum MilestoneType {
+  LITERATURE_REVIEW  // 文献调研
+  PROPOSAL          // 开题报告
+  EXPERIMENT_DESIGN // 实验设计
+  DATA_COLLECTION   // 数据收集
+  PHASE_SUMMARY     // 阶段总结
+  RESULT_OUTPUT     // 成果产出
+}
+
+enum MilestoneProgressStatus {
+  PENDING
+  IN_PROGRESS
+  COMPLETED
+  DELAYED
+  AT_RISK
+}
+
+enum AlertLevel {
+  GREEN   // 正常
+  YELLOW  // 警告
+  RED     // 严重延迟
+}
+
+model ProfessorFeedback {
+  id          String   @id @default(cuid())
+  milestoneId String
+  professorId String
+  content     String   @db.Text
+  approved    Boolean  @default(false)
+  
+  milestone   ProjectMilestone @relation(fields: [milestoneId], references: [id])
+  professor   User     @relation(fields: [professorId], references: [id])
+  
+  createdAt   DateTime @default(now())
+  
+  @@index([milestoneId])
+  @@index([professorId])
+}
+
+model Event {
+  id          String   @id @default(cuid())
+  title       String
+  description String?  @db.Text
+  startTime   DateTime
+  endTime     DateTime
+  location    String?
+  type        EventType
+  createdById String
+  projectId   String?
+  labRotationId String?
+  
+  createdBy   User     @relation("CreatedEvents", fields: [createdById], references: [id])
+  project     Project? @relation(fields: [projectId], references: [id])
+  attendees   EventAttendee[]
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  @@index([createdById])
+  @@index([type])
+  @@index([startTime])
+}
+
+enum EventType {
+  MEETING
+  DEADLINE
+  DEFENSE
+  WORKSHOP
+  LAB_ROTATION
+  MILESTONE_DUE
+  OTHER
+}
+
+model EventAttendee {
+  id       String @id @default(cuid())
+  eventId  String
+  userId   String
+  status   AttendeeStatus @default(PENDING)
+  
+  event    Event  @relation(fields: [eventId], references: [id])
+  user     User   @relation(fields: [userId], references: [id])
+  
+  @@unique([eventId, userId])
+  @@index([userId])
+  @@index([eventId])
+}
+
+enum AttendeeStatus {
+  PENDING
+  ACCEPTED
+  DECLINED
+  MAYBE
+}
+
+model UserSettings {
+  id                String   @id @default(cuid())
+  userId            String   @unique
+  emailNotifications Boolean @default(true)
+  pushNotifications Boolean  @default(false)
+  wechatNotifications Boolean @default(false)
+  notificationFrequency NotificationFrequency @default(IMMEDIATE)
+  theme            Theme     @default(LIGHT)
+  language         String    @default("zh-CN")
+  timezone         String    @default("Asia/Shanghai")
+  
+  // Role-specific settings stored as JSON
+  roleSettings     Json?     // e.g., office hours, student capacity, etc.
+  formPreferences  Json?     // Form automation preferences
+  
+  user             User      @relation(fields: [userId], references: [id])
+  
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+}
+
+enum Theme {
+  LIGHT
+  DARK
+  SYSTEM
+}
+
+enum NotificationFrequency {
+  IMMEDIATE
+  DAILY
+  WEEKLY
+  NEVER
+}
+
+// Lab rotation support - referenced in Event model
+model LabRotation {
+  id          String   @id @default(cuid())
+  name        String
+  description String?  @db.Text
+  startDate   DateTime
+  endDate     DateTime
+  capacity    Int
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 }
 
 // NextAuth models
