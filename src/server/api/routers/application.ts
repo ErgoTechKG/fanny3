@@ -10,6 +10,7 @@ export const applicationRouter = createTRPCRouter({
       z.object({
         topicId: z.string(),
         resume: z.string().min(50, '简历至少50个字符'),
+        resumeUrl: z.string().optional(),
         statement: z.string().min(100, '个人陈述至少100个字符'),
       })
     )
@@ -99,6 +100,7 @@ export const applicationRouter = createTRPCRouter({
         id: z.string(),
         status: z.nativeEnum(ApplicationStatus),
         reviewNotes: z.string().optional(),
+        professorNote: z.string().optional(),
       })
     )
     .mutation(async ({ ctx, input }) => {
@@ -121,7 +123,10 @@ export const applicationRouter = createTRPCRouter({
 
       const updated = await ctx.prisma.application.update({
         where: { id },
-        data,
+        data: {
+          ...data,
+          reviewedAt: data.status !== application.status ? new Date() : undefined,
+        },
       })
 
       // If accepted, create project

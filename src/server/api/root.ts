@@ -2,6 +2,7 @@ import { createTRPCRouter } from '@/server/api/trpc'
 import { authRouter } from '@/server/api/routers/auth'
 import { userRouter } from '@/server/api/routers/user'
 import { topicRouter } from '@/server/api/routers/topic'
+import { topicManagementRouter } from '@/server/api/routers/topicManagement'
 import { applicationRouter } from '@/server/api/routers/application'
 import { projectRouter } from '@/server/api/routers/project'
 import { progressRouter } from '@/server/api/routers/progress'
@@ -18,6 +19,7 @@ export const appRouter = createTRPCRouter({
   auth: authRouter,
   user: userRouter,
   topic: topicRouter,
+  topicManagement: topicManagementRouter,
   application: applicationRouter,
   project: projectRouter,
   progress: progressRouter,

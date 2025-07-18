@@ -24,19 +24,24 @@ export default function LoginPage() {
     setIsLoading(true)
 
     try {
+      console.log('Attempting login with:', { email, password: '***' })
       const result = await signIn('credentials', {
         email,
         password,
         redirect: false,
       })
+      console.log('Login result:', result)
 
       if (result?.error) {
-        setError('邮箱或密码错误')
-      } else {
+        console.error('Login error:', result.error)
+        setError(result.error || '邮箱或密码错误')
+      } else if (result?.ok) {
+        console.log('Login successful, redirecting to dashboard')
         router.push('/dashboard')
         router.refresh()
       }
     } catch (error) {
+      console.error('Login exception:', error)
       setError('登录失败，请稍后重试')
     } finally {
       setIsLoading(false)

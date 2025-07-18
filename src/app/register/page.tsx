@@ -24,6 +24,7 @@ export default function RegisterPage() {
     studentId: '',
     department: '',
     classType: 'INNOVATION',
+    phone: '',
   })
   const [error, setError] = useState('')
   const [isLoading, setIsLoading] = useState(false)
@@ -57,12 +58,9 @@ export default function RegisterPage() {
       email: formData.email,
       password: formData.password,
       name: formData.name,
-      role: formData.role as 'STUDENT' | 'PROFESSOR',
-      studentId: formData.role === 'STUDENT' ? formData.studentId : undefined,
+      studentId: formData.studentId,
       department: formData.department,
-      classType: formData.role === 'STUDENT' 
-        ? (formData.classType as 'INNOVATION' | 'QIMING')
-        : undefined,
+      phone: formData.phone,
     })
 
     setIsLoading(false)
@@ -182,6 +180,19 @@ export default function RegisterPage() {
                   placeholder="计算机科学与技术学院"
                   value={formData.department}
                   onChange={(e) => setFormData({ ...formData, department: e.target.value })}
+                  required
+                  disabled={isLoading}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="phone">手机号</Label>
+                <Input
+                  id="phone"
+                  type="tel"
+                  placeholder="13800138000"
+                  value={formData.phone}
+                  onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
                   required
                   disabled={isLoading}
                 />

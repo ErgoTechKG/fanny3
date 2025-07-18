@@ -70,6 +70,9 @@ model Topic {
   expectedOutcomes String[]
   field            String
   difficulty       Difficulty
+  attachmentUrl    String?
+  startDate        DateTime?
+  endDate          DateTime?
   
   applications     Application[]
   projects         Project[]
@@ -95,18 +98,21 @@ enum Difficulty {
 }
 
 model Application {
-  id          String   @id @default(cuid())
-  student     User     @relation("StudentApplications", fields: [studentId], references: [id])
-  studentId   String
-  topic       Topic    @relation(fields: [topicId], references: [id])
-  topicId     String
-  resume      String   @db.Text
-  statement   String   @db.Text
-  status      ApplicationStatus @default(PENDING)
-  reviewNotes String?  @db.Text
+  id            String   @id @default(cuid())
+  student       User     @relation("StudentApplications", fields: [studentId], references: [id])
+  studentId     String
+  topic         Topic    @relation(fields: [topicId], references: [id])
+  topicId       String
+  resume        String   @db.Text
+  resumeUrl     String?
+  statement     String   @db.Text
+  status        ApplicationStatus @default(PENDING)
+  professorNote String?  @db.Text
+  reviewNotes   String?  @db.Text
+  reviewedAt    DateTime?
   
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
   
   @@unique([studentId, topicId])
   @@index([studentId])
@@ -119,6 +125,7 @@ enum ApplicationStatus {
   REVIEWING
   ACCEPTED
   REJECTED
+  WITHDRAWN
 }
 
 model Project {
@@ -135,6 +142,7 @@ model Project {
   
   progress    Progress[]
   milestones  Milestone[]
+  progressReports ProgressReport[]
   
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
@@ -186,21 +194,56 @@ enum ProgressStatus {
   APPROVED
 }
 
+model ProgressReport {
+  id          String     @id @default(cuid())
+  projectId   String
+  milestoneId String?
+  content     String     @db.Text
+  attachments Json?
+  reportType  ReportType
+  feedback    String?    @db.Text
+  createdAt   DateTime   @default(now())
+  
+  project     Project    @relation(fields: [projectId], references: [id])
+  milestone   Milestone? @relation(fields: [milestoneId], references: [id])
+  
+  @@index([projectId])
+  @@index([reportType])
+}
+
+enum ReportType {
+  WEEKLY
+  MONTHLY
+  MILESTONE
+}
+
 model Milestone {
-  id          String   @id @default(cuid())
-  project     Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  id          String          @id @default(cuid())
+  project     Project         @relation(fields: [projectId], references: [id], onDelete: Cascade)
   projectId   String
   name        String
   description String?
-  dueDate     DateTime
-  completed   Boolean  @default(false)
-  completedAt DateTime?
+  plannedDate DateTime        @default(now())
+  actualDate  DateTime?
+  progress    Int             @default(0)
+  status      MilestoneStatus @default(NOT_STARTED)
+  order       Int             @default(0)
   
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  progressReports ProgressReport[]
   
-  @@index([projectId])
-  @@index([dueDate])
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+  
+  @@index([projectId, order])
+  @@index([plannedDate])
+}
+
+enum MilestoneStatus {
+  NOT_STARTED
+  IN_PROGRESS
+  COMPLETED
+  DELAYED
+  BLOCKED
 }
 
 model Achievement {

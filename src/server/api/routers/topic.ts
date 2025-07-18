@@ -17,6 +17,9 @@ export const topicRouter = createTRPCRouter({
         expectedOutcomes: z.array(z.string()),
         field: z.string(),
         difficulty: z.nativeEnum(Difficulty),
+        attachmentUrl: z.string().optional(),
+        startDate: z.date().optional(),
+        endDate: z.date().optional(),
       })
     )
     .mutation(async ({ ctx, input }) => {
