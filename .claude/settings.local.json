@@ -16,7 +16,27 @@
       "Bash(python:*)",
       "Bash(python -m pytest:*)",
       "Bash(python3 -m pytest:*)",
-      "WebFetch(domain:docs.anthropic.com)"
+      "WebFetch(domain:docs.anthropic.com)",
+      "Bash(git remote:*)",
+      "Bash(gh auth:*)",
+      "Bash(gh repo create:*)",
+      "Bash(git push:*)",
+      "Bash(pip install:*)",
+      "Bash(rm:*)",
+      "mcp__ide__executeCode",
+      "Bash(npm install)",
+      "Bash(npx prisma generate:*)",
+      "Bash(npx prisma:*)",
+      "Bash(npm run prisma:seed:*)",
+      "Bash(openssl rand:*)",
+      "Bash(npm run dev:*)",
+      "WebFetch(domain:trpc.io)",
+      "Bash(curl:*)",
+      "Bash(npx shadcn-ui@latest init:*)",
+      "Bash(npx shadcn@latest init:*)",
+      "Bash(npx shadcn@latest add:*)",
+      "Bash(pkill:*)",
+      "Bash(true)"
     ],
     "deny": []
   }

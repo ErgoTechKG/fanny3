@@ -1,0 +1,290 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model User {
+  id              String    @id @default(cuid())
+  email           String    @unique
+  password        String
+  name            String
+  nameEn          String?
+  studentId       String?   @unique
+  phone           String?
+  avatar          String?
+  department      String?
+  roles           UserRole[]
+  
+  // Relations
+  professorTopics Topic[]   @relation("ProfessorTopics")
+  studentApplications Application[] @relation("StudentApplications")
+  studentProjects Project[] @relation("StudentProjects")
+  studentProgress Progress[] @relation("StudentProgress")
+  studentAchievements Achievement[] @relation("StudentAchievements")
+  advisorProjects Project[] @relation("AdvisorProjects")
+  
+  // NextAuth relations
+  accounts        Account[]
+  sessions        Session[]
+  
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+}
+
+model UserRole {
+  id     String   @id @default(cuid())
+  userId String
+  role   Role
+  user   User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@unique([userId, role])
+  @@index([userId])
+}
+
+enum Role {
+  STUDENT
+  PROFESSOR
+  SECRETARY
+  ADMIN
+}
+
+model Topic {
+  id               String   @id @default(cuid())
+  title            String
+  titleEn          String?
+  description      String   @db.Text
+  descriptionEn    String?  @db.Text
+  professor        User     @relation("ProfessorTopics", fields: [professorId], references: [id])
+  professorId      String
+  status           TopicStatus @default(RECRUITING)
+  maxStudents      Int      @default(1)
+  currentStudents  Int      @default(0)
+  prerequisites    String[]
+  expectedOutcomes String[]
+  field            String
+  difficulty       Difficulty
+  
+  applications     Application[]
+  projects         Project[]
+  
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+  
+  @@index([professorId])
+  @@index([status])
+}
+
+enum TopicStatus {
+  DRAFT
+  RECRUITING
+  IN_PROGRESS
+  COMPLETED
+}
+
+enum Difficulty {
+  BEGINNER
+  INTERMEDIATE
+  ADVANCED
+}
+
+model Application {
+  id          String   @id @default(cuid())
+  student     User     @relation("StudentApplications", fields: [studentId], references: [id])
+  studentId   String
+  topic       Topic    @relation(fields: [topicId], references: [id])
+  topicId     String
+  resume      String   @db.Text
+  statement   String   @db.Text
+  status      ApplicationStatus @default(PENDING)
+  reviewNotes String?  @db.Text
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  @@unique([studentId, topicId])
+  @@index([studentId])
+  @@index([topicId])
+  @@index([status])
+}
+
+enum ApplicationStatus {
+  PENDING
+  REVIEWING
+  ACCEPTED
+  REJECTED
+}
+
+model Project {
+  id          String   @id @default(cuid())
+  student     User     @relation("StudentProjects", fields: [studentId], references: [id])
+  studentId   String
+  advisor     User     @relation("AdvisorProjects", fields: [advisorId], references: [id])
+  advisorId   String
+  topic       Topic    @relation(fields: [topicId], references: [id])
+  topicId     String
+  status      ProjectStatus @default(ACTIVE)
+  startDate   DateTime @default(now())
+  endDate     DateTime?
+  
+  progress    Progress[]
+  milestones  Milestone[]
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  @@index([studentId])
+  @@index([advisorId])
+  @@index([status])
+}
+
+enum ProjectStatus {
+  ACTIVE
+  PAUSED
+  COMPLETED
+  ABANDONED
+}
+
+model Progress {
+  id          String   @id @default(cuid())
+  project     Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  projectId   String
+  student     User     @relation("StudentProgress", fields: [studentId], references: [id])
+  studentId   String
+  type        ProgressType
+  title       String
+  content     String   @db.Text
+  attachments String[]
+  feedback    String?  @db.Text
+  status      ProgressStatus @default(SUBMITTED)
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  @@index([projectId])
+  @@index([studentId])
+  @@index([status])
+}
+
+enum ProgressType {
+  DAILY_LOG
+  WEEKLY_SUMMARY
+  MONTHLY_REPORT
+  MILESTONE
+}
+
+enum ProgressStatus {
+  DRAFT
+  SUBMITTED
+  REVIEWED
+  APPROVED
+}
+
+model Milestone {
+  id          String   @id @default(cuid())
+  project     Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  projectId   String
+  name        String
+  description String?
+  dueDate     DateTime
+  completed   Boolean  @default(false)
+  completedAt DateTime?
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  @@index([projectId])
+  @@index([dueDate])
+}
+
+model Achievement {
+  id          String   @id @default(cuid())
+  student     User     @relation("StudentAchievements", fields: [studentId], references: [id])
+  studentId   String
+  type        AchievementType
+  title       String
+  description String?  @db.Text
+  proof       String?  // URL or file path
+  verified    Boolean  @default(false)
+  verifiedBy  String?
+  verifiedAt  DateTime?
+  score       Int?     // For competitions
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  @@index([studentId])
+  @@index([type])
+  @@index([verified])
+}
+
+enum AchievementType {
+  PAPER
+  PATENT
+  SOFTWARE_COPYRIGHT
+  COMPETITION
+  OTHER
+}
+
+model Evaluation {
+  id            String   @id @default(cuid())
+  studentId     String
+  year          Int
+  semester      Int
+  moralScore    Float    // 思想品德
+  academicScore Float    // 学业成绩
+  innovationScore Float  // 科技创新
+  researchScore Float    // 科研推进
+  totalScore    Float
+  rank          String?  // A/B/C/D
+  comments      String?  @db.Text
+  
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  
+  @@unique([studentId, year, semester])
+  @@index([studentId])
+  @@index([year, semester])
+}
+
+// NextAuth models
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
