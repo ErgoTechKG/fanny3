@@ -1,7 +1,8 @@
 import { z } from 'zod'
-import { createTRPCRouter, protectedProcedure, professorProcedure } from '@/server/api/trpc'
+import { createTRPCRouter, protectedProcedure, professorProcedure, adminProcedure } from '@/server/api/trpc'
 import { LogType, MilestoneProgressStatus, AlertLevel, MilestoneType } from '@prisma/client'
 import { TRPCError } from '@trpc/server'
+import { ProgressAlertService } from '@/lib/services/progress-alert'
 
 export const progressRouter = createTRPCRouter({
   // Get user's projects for progress tracking
@@ -243,13 +244,12 @@ export const progressRouter = createTRPCRouter({
         })
       }
 
-      // Update alert level based on status and due date
-      let alertLevel = AlertLevel.GREEN
-      if (status === MilestoneProgressStatus.DELAYED || status === MilestoneProgressStatus.AT_RISK) {
-        alertLevel = AlertLevel.RED
-      } else if (new Date() > milestone.dueDate && status !== MilestoneProgressStatus.COMPLETED) {
-        alertLevel = AlertLevel.YELLOW
-      }
+      // Use ProgressAlertService to calculate alert level
+      const alertService = new ProgressAlertService()
+      const alertLevel = alertService.calculateAlertLevel({
+        ...milestone,
+        status
+      })
 
       const updated = await ctx.prisma.projectMilestone.update({
         where: { id },
@@ -471,6 +471,147 @@ export const progressRouter = createTRPCRouter({
         success: true,
         message: '里程碑创建成功',
         milestone,
+      }
+    }),
+
+  // Check and update project milestone alerts
+  checkMilestoneAlerts: adminProcedure
+    .input(
+      z.object({
+        projectId: z.string().optional()
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      const alertService = new ProgressAlertService()
+      
+      if (input.projectId) {
+        // Check specific project
+        const alerts = await alertService.checkProjectMilestones(input.projectId)
+        return {
+          success: true,
+          message: `已检查并更新 ${alerts.length} 个里程碑警报`,
+          data: alerts
+        }
+      } else {
+        // Check all active projects
+        const alerts = await alertService.checkAllActiveProjects()
+        return {
+          success: true,
+          message: `已检查所有活跃项目，发现 ${alerts.length} 个需要关注的里程碑`,
+          data: alerts
+        }
+      }
+    }),
+
+  // Get milestone health statistics
+  getMilestoneStats: protectedProcedure
+    .input(
+      z.object({
+        projectId: z.string()
+      })
+    )
+    .query(async ({ ctx, input }) => {
+      const alertService = new ProgressAlertService()
+      const stats = await alertService.getProjectMilestoneStats(input.projectId)
+      
+      return stats
+    }),
+
+  // Get upcoming milestones with alerts
+  getUpcomingMilestones: protectedProcedure
+    .input(
+      z.object({
+        daysAhead: z.number().default(30),
+        onlyMyProjects: z.boolean().default(true)
+      })
+    )
+    .query(async ({ ctx, input }) => {
+      const alertService = new ProgressAlertService()
+      const user = ctx.session.user
+      
+      let studentId: string | undefined
+      if (input.onlyMyProjects && user.roles.includes('STUDENT')) {
+        studentId = user.id
+      }
+      
+      const milestones = await alertService.getUpcomingMilestonesWithAlerts(
+        studentId,
+        input.daysAhead
+      )
+      
+      return milestones
+    }),
+
+  // Update milestone progress with automatic alert calculation
+  updateMilestoneProgress: protectedProcedure
+    .input(
+      z.object({
+        milestoneId: z.string(),
+        progress: z.number().min(0).max(100),
+        notes: z.string().optional()
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      const alertService = new ProgressAlertService()
+      
+      // Verify access
+      const milestone = await ctx.prisma.projectMilestone.findUnique({
+        where: { id: input.milestoneId },
+        include: {
+          project: {
+            select: {
+              studentId: true,
+              advisorId: true
+            }
+          }
+        }
+      })
+      
+      if (!milestone) {
+        throw new TRPCError({
+          code: 'NOT_FOUND',
+          message: '里程碑不存在'
+        })
+      }
+      
+      const user = ctx.session.user
+      const hasAccess = 
+        milestone.project.studentId === user.id ||
+        milestone.project.advisorId === user.id ||
+        user.roles.includes('ADMIN')
+      
+      if (!hasAccess) {
+        throw new TRPCError({
+          code: 'FORBIDDEN',
+          message: '无权更新此里程碑'
+        })
+      }
+      
+      // Update milestone with progress
+      const completed = input.progress === 100
+      const updated = await alertService.updateMilestoneProgress(
+        input.milestoneId,
+        input.progress,
+        completed
+      )
+      
+      // Add notes if provided
+      if (input.notes) {
+        await ctx.prisma.researchLog.create({
+          data: {
+            projectId: milestone.projectId,
+            studentId: user.id,
+            type: LogType.DAILY,
+            content: `里程碑进度更新：${milestone.name} - ${input.progress}%\n\n${input.notes}`,
+            weekNumber: null
+          }
+        })
+      }
+      
+      return {
+        success: true,
+        message: completed ? '里程碑已完成！' : `里程碑进度已更新为 ${input.progress}%`,
+        data: updated
       }
     }),
 })

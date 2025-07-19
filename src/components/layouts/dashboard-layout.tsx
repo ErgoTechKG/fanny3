@@ -50,6 +50,9 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
   const navigation = [
     { name: '仪表盘', href: '/dashboard', icon: LayoutDashboard, show: true },
     { name: '课题管理', href: '/topics', icon: FileText, show: true },
+    { name: '导师申请', href: '/mentor/apply', icon: GraduationCap, show: isStudent },
+    { name: '申请状态', href: '/mentor/status', icon: TrendingUp, show: isStudent },
+    { name: '导师管理', href: '/mentor/manage', icon: Users, show: isProfessor },
     { name: '进度跟踪', href: '/progress', icon: TrendingUp, show: true },
     { name: '成果管理', href: '/achievements', icon: Award, show: true },
     { name: '学生管理', href: '/students', icon: Users, show: isProfessor || isAdmin },

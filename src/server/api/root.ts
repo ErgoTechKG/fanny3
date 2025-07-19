@@ -11,6 +11,10 @@ import { evaluationRouter } from '@/server/api/routers/evaluation'
 import { dashboardRouter } from '@/server/api/routers/dashboard'
 import { calendarRouter } from '@/server/api/routers/calendar'
 import { settingsRouter } from '@/server/api/routers/settings'
+import { mentorRouter } from '@/server/api/routers/mentor'
+import { labRouter } from '@/server/api/routers/lab'
+import { formRouter } from '@/server/api/routers/form'
+import { importRouter } from '@/server/api/routers/import'
 
 /**
  * This is the primary router for your server.
@@ -30,6 +34,10 @@ export const appRouter = createTRPCRouter({
   dashboard: dashboardRouter,
   calendar: calendarRouter,
   settings: settingsRouter,
+  mentor: mentorRouter,
+  lab: labRouter,
+  form: formRouter,
+  import: importRouter,
 })
 
 // export type definition of API

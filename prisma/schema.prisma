@@ -20,6 +20,7 @@ model User {
   phone           String?
   avatar          String?
   department      String?
+  maxStudents     Int?      // For professors: max students they can supervise
   roles           UserRole[]
   
   // Relations
@@ -36,6 +37,21 @@ model User {
   createdEvents   Event[]   @relation("CreatedEvents")
   eventAttendances EventAttendee[]
   userSettings    UserSettings?
+  
+  // Mentor system relations
+  studentMentorApplications MentorApplication[] @relation("StudentApplications")
+  firstChoiceApplications   MentorApplication[] @relation("FirstChoiceMentor")
+  secondChoiceApplications  MentorApplication[] @relation("SecondChoiceMentor")
+  thirdChoiceApplications   MentorApplication[] @relation("ThirdChoiceMentor")
+  finalMentorApplications   MentorApplication[] @relation("FinalMentor")
+  directedLabs             Lab[]
+  labRotationApplications  LabRotationApplication[]
+  rotationMentorships      LabRotationApplication[] @relation("RotationMentor")
+  formSubmissions          FormSubmission[]
+  
+  // Evaluation relations
+  studentEvaluations       Evaluation[] @relation("StudentEvaluations")
+  evaluatorEvaluations     Evaluation[] @relation("EvaluatorEvaluations")
   
   // NextAuth relations
   accounts        Account[]
@@ -81,6 +97,12 @@ model Topic {
   startDate        DateTime?
   endDate          DateTime?
   
+  // New fields for enterprise projects
+  type             TopicType @default(INNOVATION)
+  companyName      String?   // For enterprise projects
+  companyMentor    String?   // Enterprise mentor name
+  taskBook         Json?     // Task book content for enterprise projects
+  
   applications     Application[]
   projects         Project[]
   
@@ -102,6 +124,11 @@ enum Difficulty {
   BEGINNER
   INTERMEDIATE
   ADVANCED
+}
+
+enum TopicType {
+  INNOVATION  // 创新项目
+  ENTERPRISE  // 企业项目
 }
 
 model Application {
@@ -290,6 +317,7 @@ enum AchievementType {
 model Evaluation {
   id            String   @id @default(cuid())
   studentId     String
+  student       User     @relation("StudentEvaluations", fields: [studentId], references: [id])
   year          Int
   semester      Int
   moralScore    Float    // 思想品德
@@ -299,6 +327,10 @@ model Evaluation {
   totalScore    Float
   rank          String?  // A/B/C/D
   comments      String?  @db.Text
+  evaluatorId   String?
+  evaluator     User?    @relation("EvaluatorEvaluations", fields: [evaluatorId], references: [id])
+  evaluationData Json?   // Stores detailed evaluation input data
+  evaluationDetails Json? // Stores calculation breakdown
   
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
@@ -306,6 +338,7 @@ model Evaluation {
   @@unique([studentId, year, semester])
   @@index([studentId])
   @@index([year, semester])
+  @@index([evaluatorId])
 }
 
 // New models for missing pages implementation
@@ -534,4 +567,196 @@ model VerificationToken {
   expires    DateTime
 
   @@unique([identifier, token])
+}
+
+// ============ New Models for Core Features ============
+
+// Mentor Application System
+model MentorApplication {
+  id              String   @id @default(cuid())
+  studentId       String
+  academicYear    String   // e.g., "2024-2025"
+  
+  firstChoiceId   String
+  firstReason     String   @db.Text
+  secondChoiceId  String?
+  secondReason    String?  @db.Text
+  thirdChoiceId   String?
+  thirdReason     String?  @db.Text
+  
+  personalStatement String @db.Text
+  researchInterest  String @db.Text
+  
+  status          MentorApplicationStatus @default(PENDING)
+  finalMentorId   String?
+  matchRound      Int?     // Which round they were matched (1, 2, or 3)
+  
+  student         User     @relation("StudentApplications", fields: [studentId], references: [id])
+  firstChoice     User     @relation("FirstChoiceMentor", fields: [firstChoiceId], references: [id])
+  secondChoice    User?    @relation("SecondChoiceMentor", fields: [secondChoiceId], references: [id])
+  thirdChoice     User?    @relation("ThirdChoiceMentor", fields: [thirdChoiceId], references: [id])
+  finalMentor     User?    @relation("FinalMentor", fields: [finalMentorId], references: [id])
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  
+  @@unique([studentId, academicYear])
+  @@index([academicYear])
+  @@index([status])
+}
+
+enum MentorApplicationStatus {
+  PENDING
+  FIRST_MATCHED
+  SECOND_MATCHED
+  THIRD_MATCHED
+  UNMATCHED
+  CONFIRMED
+}
+
+// Lab Management
+model Lab {
+  id              String   @id @default(cuid())
+  name            String
+  nameEn          String?
+  code            String   @unique
+  directorId      String
+  location        String
+  capacity        Int
+  
+  description     String   @db.Text
+  researchAreas   String[]
+  equipment       String[]
+  achievements    String[]
+  
+  director        User     @relation(fields: [directorId], references: [id])
+  rotations       LabRotationApplication[]
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  
+  @@index([directorId])
+}
+
+// Lab Rotation Application
+model LabRotationApplication {
+  id              String   @id @default(cuid())
+  studentId       String
+  semester        String   // e.g., "2024-1"
+  
+  choices         Json     // [{order: 1, labId: "xxx", reason: "xxx"}]
+  
+  assignedLabId   String?
+  assignedMentorId String?
+  startDate       DateTime?
+  endDate         DateTime?
+  
+  status          RotationStatus @default(PENDING)
+  
+  student         User     @relation(fields: [studentId], references: [id])
+  assignedLab     Lab?     @relation(fields: [assignedLabId], references: [id])
+  assignedMentor  User?    @relation("RotationMentor", fields: [assignedMentorId], references: [id])
+  logs            RotationLog[]
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  
+  @@unique([studentId, semester])
+  @@index([semester])
+  @@index([status])
+}
+
+// Rotation Log
+model RotationLog {
+  id              String   @id @default(cuid())
+  rotationId      String
+  weekNumber      Int
+  
+  content         String   @db.Text
+  problems        String[]
+  achievements    String[]
+  nextPlan        String?
+  
+  mentorFeedback  String?  @db.Text
+  feedbackDate    DateTime?
+  
+  rotation        LabRotationApplication @relation(fields: [rotationId], references: [id])
+  
+  createdAt       DateTime @default(now())
+  
+  @@index([rotationId])
+  @@index([weekNumber])
+}
+
+enum RotationStatus {
+  PENDING
+  ASSIGNED
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+}
+
+// Form Automation System
+model FormTemplate {
+  id              String   @id @default(cuid())
+  name            String
+  code            String   @unique
+  category        FormCategory
+  
+  schema          Json     // Form structure definition
+  workflow        Json?    // Approval workflow configuration
+  
+  active          Boolean  @default(true)
+  version         Int      @default(1)
+  
+  submissions     FormSubmission[]
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  
+  @@index([category])
+  @@index([active])
+}
+
+// Form Submission
+model FormSubmission {
+  id              String   @id @default(cuid())
+  templateId      String
+  submittedById   String
+  
+  data            Json     // Submitted form data
+  status          SubmissionStatus @default(DRAFT)
+  
+  currentStep     Int      @default(0)
+  approvals       Json[]   // Approval history [{userId, action, comment, timestamp}]
+  
+  template        FormTemplate @relation(fields: [templateId], references: [id])
+  submittedBy     User     @relation(fields: [submittedById], references: [id])
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  
+  @@index([templateId])
+  @@index([submittedById])
+  @@index([status])
+}
+
+enum FormCategory {
+  MENTOR_INFO         // 导师信息表
+  MENTOR_APPLICATION  // 学生选择导师意向书
+  TRAINING_PLAN       // 个性化培养方案
+  LAB_ROTATION        // 实验室轮转报名与结果
+  COURSE_EVALUATION   // 课程评价表
+  QUALITY_EVALUATION  // 综合素质评价表
+  PROJECT_PROPOSAL    // 项目申报书
+  ACHIEVEMENT_SUMMARY // 成果汇总表
+}
+
+enum SubmissionStatus {
+  DRAFT
+  SUBMITTED
+  REVIEWING
+  APPROVED
+  REJECTED
+  RETURNED
 }

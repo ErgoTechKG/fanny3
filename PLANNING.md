@@ -35,7 +35,7 @@
 └─────────────────────────────────────────────────────────────┘
 ```
 
-### Directory Structure
+### Directory Structure (Extended for Complete Implementation)
 ```
 hust-research-platform/
 ├── src/
@@ -48,6 +48,13 @@ hust-research-platform/
 │   │   │   ├── professor/       # Professor dashboard
 │   │   │   ├── secretary/       # Secretary dashboard
 │   │   │   └── admin/          # Admin dashboard
+│   │   ├── topics/             # Topic management
+│   │   ├── progress/           # Progress tracking
+│   │   ├── calendar/           # Calendar system
+│   │   ├── settings/           # Settings management
+│   │   ├── labs/               # Lab rotation
+│   │   ├── evaluation/         # Evaluation system
+│   │   ├── forms/              # Form automation
 │   │   ├── api/                # API routes
 │   │   │   ├── auth/           # NextAuth routes
 │   │   │   └── trpc/           # tRPC routes
@@ -57,26 +64,53 @@ hust-research-platform/
 │   │   ├── ui/                # shadcn/ui components
 │   │   ├── layouts/           # Layout components
 │   │   ├── features/          # Feature-specific components
+│   │   │   ├── mentor-matching/
+│   │   │   ├── lab-rotation/
+│   │   │   ├── progress-tracking/
+│   │   │   ├── evaluation/
+│   │   │   └── forms/
 │   │   └── charts/            # Data visualization
 │   ├── lib/                   # Utilities and configs
 │   │   ├── auth.ts           # NextAuth configuration
 │   │   ├── prisma.ts         # Prisma client
 │   │   ├── utils.ts          # Helper functions
-│   │   └── constants.ts      # App constants
+│   │   ├── constants.ts      # App constants
+│   │   ├── algorithms/       # Core algorithms
+│   │   │   ├── gale-shapley.ts
+│   │   │   ├── evaluation.ts
+│   │   │   └── matching.ts
+│   │   └── importers/        # Data importers
+│   │       ├── excel.ts
+│   │       └── forms.ts
 │   ├── hooks/                # Custom React hooks
 │   ├── types/                # TypeScript definitions
 │   ├── server/               # Server-side code
 │   │   ├── api/             # tRPC routers
+│   │   │   ├── mentor.ts
+│   │   │   ├── lab.ts
+│   │   │   ├── progress.ts
+│   │   │   ├── evaluation.ts
+│   │   │   └── forms.ts
 │   │   ├── db/              # Database queries
 │   │   └── services/        # Business logic
+│   │       ├── matching/
+│   │       ├── notification/
+│   │       ├── evaluation/
+│   │       └── forms/
 │   └── styles/              # Global styles
 ├── prisma/
-│   ├── schema.prisma        # Database schema
+│   ├── schema.prisma        # Database schema (complete)
 │   ├── seed.ts             # Seed data script
 │   └── migrations/         # Database migrations
 ├── public/                 # Static assets
 ├── tests/                  # Test files
+├── scripts/                # Utility scripts
+│   ├── import-data.ts     # Import from doc-materials
+│   └── generate-forms.ts  # Form template generation
 └── docs/                   # Documentation
+    ├── integration/       # Integration guides
+    ├── api/              # API documentation
+    └── user-guides/      # Role-specific guides
 ```
 
 ## 📊 Database Schema
@@ -339,28 +373,71 @@ SMTP_PASSWORD=...
 - Contribution guidelines
 - Code examples
 
-## 🎯 Milestones
+## 🎯 Milestones (Updated based on Integration Guide)
 
-### Phase 1: Foundation (Week 1-2)
-- [ ] Project setup
-- [ ] Authentication system
-- [ ] Basic UI components
-- [ ] Database schema
+### Phase 1: Foundation (Completed)
+- [x] Project setup
+- [x] Authentication system
+- [x] Basic UI components
+- [x] Database schema (25% complete)
 
-### Phase 2: Core Features (Week 3-4)
-- [ ] Topic management
-- [ ] User dashboards
-- [ ] Application system
-- [ ] Progress tracking
+### Phase 2: Database & Core Infrastructure (Week 1)
+- [ ] Complete database schema (30+ tables)
+- [ ] Implement MentorApplication system
+- [ ] Lab and LabRotation management
+- [ ] FormTemplate and FormSubmission system
+- [ ] Notification infrastructure
+- [ ] Data import from Excel files
 
-### Phase 3: Advanced Features (Week 5-6)
-- [ ] Analytics dashboards
-- [ ] Automated forms
-- [ ] Notification system
-- [ ] Achievement system
+### Phase 3: Mentor Matching System (Week 2)
+- [ ] Gale-Shapley algorithm implementation
+- [ ] Three-preference application system
+- [ ] Capacity constraints handling
+- [ ] Matching results notification
+- [ ] Conflict resolution workflow
 
-### Phase 4: Polish & Deploy (Week 7-8)
+### Phase 4: Lab Rotation System (Week 3)
+- [ ] Lab information management (from 实验室轮转答辩流程)
+- [ ] Rotation scheduling system
+- [ ] Defense presentation workflow
+- [ ] Evaluation and feedback
+- [ ] Results announcement
+
+### Phase 5: Progress Tracking & Monitoring (Week 4)
+- [ ] Research log system (daily/weekly/monthly)
+- [ ] Milestone tracking with alerts
+- [ ] Gantt chart visualization
+- [ ] Professor feedback system
+- [ ] Four-week summary automation
+
+### Phase 6: Evaluation System (Week 5)
+- [ ] Four-dimension scoring (思想品德10%, 学业成绩40%, 科技创新30%, 科研推进20%)
+- [ ] Automated calculation engine
+- [ ] Grade distribution analysis
+- [ ] Historical comparison
+- [ ] Report generation
+
+### Phase 7: Form Automation (Week 6)
+- [ ] 导师信息表 automation
+- [ ] 学生选择导师意向书 automation
+- [ ] 个性化培养方案 automation
+- [ ] 实验室轮转报名与结果 automation
+- [ ] 课程评价表 automation
+- [ ] 综合素质评价表 automation
+- [ ] 项目申报书 automation
+- [ ] 成果汇总表 automation
+
+### Phase 8: Enterprise & Innovation Projects (Week 7)
+- [ ] Project type distinction system
+- [ ] Enterprise project management (from 企业项目实践-任务书)
+- [ ] Innovation project tracking (from 创新项目实践课程资料)
+- [ ] Achievement verification
+- [ ] Patent/paper management
+
+### Phase 9: Testing & Deployment (Week 8)
+- [ ] Comprehensive testing suite
 - [ ] Performance optimization
 - [ ] Security audit
-- [ ] User testing
-- [ ] Deployment
+- [ ] User acceptance testing
+- [ ] Production deployment
+- [ ] Documentation completion

@@ -1,4 +1,4 @@
-import { PrismaClient, Role, TopicStatus, Difficulty, ApplicationStatus, ProjectStatus, ProgressType, ProgressStatus, AchievementType } from '@prisma/client'
+import { PrismaClient, Role, TopicStatus, Difficulty, ApplicationStatus, ProjectStatus, ProgressType, ProgressStatus, AchievementType, TopicType, MentorApplicationStatus, FormCategory, AlertLevel, MilestoneType, MilestoneProgressStatus, MilestoneStatus } from '@prisma/client'
 import bcrypt from 'bcryptjs'
 
 const prisma = new PrismaClient()
@@ -40,13 +40,27 @@ async function main() {
 
   // Clear existing data
   await prisma.$transaction([
+    prisma.formSubmission.deleteMany(),
+    prisma.formTemplate.deleteMany(),
+    prisma.rotationLog.deleteMany(),
+    prisma.labRotationApplication.deleteMany(),
+    prisma.mentorApplication.deleteMany(),
+    prisma.lab.deleteMany(),
     prisma.evaluation.deleteMany(),
     prisma.achievement.deleteMany(),
+    prisma.progressReport.deleteMany(),
     prisma.milestone.deleteMany(),
+    prisma.professorFeedback.deleteMany(),
+    prisma.projectMilestone.deleteMany(),
+    prisma.researchLog.deleteMany(),
     prisma.progress.deleteMany(),
     prisma.project.deleteMany(),
     prisma.application.deleteMany(),
     prisma.topic.deleteMany(),
+    prisma.eventAttendee.deleteMany(),
+    prisma.event.deleteMany(),
+    prisma.userSettings.deleteMany(),
+    prisma.labRotation.deleteMany(),
     prisma.userRole.deleteMany(),
     prisma.account.deleteMany(),
     prisma.session.deleteMany(),
@@ -112,6 +126,7 @@ async function main() {
         nameEn,
         phone: `1382222${String(i).padStart(4, '0')}`,
         department,
+        maxStudents: Math.floor(Math.random() * 3) + 2, // 2-4 students per professor
         roles: {
           create: { role: Role.PROFESSOR }
         }
@@ -148,16 +163,16 @@ async function main() {
 
   // Create Topics
   const topicTemplates = [
-    { title: '基于深度学习的图像识别算法研究', titleEn: 'Research on Deep Learning-based Image Recognition Algorithms', field: '人工智能', difficulty: Difficulty.ADVANCED },
-    { title: '物联网智能家居控制系统设计与实现', titleEn: 'Design and Implementation of IoT Smart Home Control System', field: '物联网', difficulty: Difficulty.INTERMEDIATE },
-    { title: '机器人视觉导航技术研究', titleEn: 'Research on Robot Visual Navigation Technology', field: '机器人技术', difficulty: Difficulty.ADVANCED },
-    { title: '新型纳米材料的制备与表征', titleEn: 'Preparation and Characterization of Novel Nanomaterials', field: '新材料', difficulty: Difficulty.ADVANCED },
-    { title: '智能制造系统的优化与调度', titleEn: 'Optimization and Scheduling of Intelligent Manufacturing Systems', field: '智能制造', difficulty: Difficulty.INTERMEDIATE },
-    { title: '大数据分析平台的设计与开发', titleEn: 'Design and Development of Big Data Analytics Platform', field: '大数据', difficulty: Difficulty.INTERMEDIATE },
-    { title: '云计算环境下的资源调度算法', titleEn: 'Resource Scheduling Algorithms in Cloud Computing Environment', field: '云计算', difficulty: Difficulty.ADVANCED },
-    { title: '区块链技术在供应链管理中的应用', titleEn: 'Application of Blockchain Technology in Supply Chain Management', field: '区块链', difficulty: Difficulty.INTERMEDIATE },
-    { title: '量子计算算法的研究与实现', titleEn: 'Research and Implementation of Quantum Computing Algorithms', field: '量子计算', difficulty: Difficulty.ADVANCED },
-    { title: '机器学习在医疗诊断中的应用', titleEn: 'Application of Machine Learning in Medical Diagnosis', field: '机器学习', difficulty: Difficulty.INTERMEDIATE },
+    { title: '基于深度学习的图像识别算法研究', titleEn: 'Research on Deep Learning-based Image Recognition Algorithms', field: '人工智能', difficulty: Difficulty.ADVANCED, type: TopicType.INNOVATION },
+    { title: '物联网智能家居控制系统设计与实现', titleEn: 'Design and Implementation of IoT Smart Home Control System', field: '物联网', difficulty: Difficulty.INTERMEDIATE, type: TopicType.INNOVATION },
+    { title: '机器人视觉导航技术研究', titleEn: 'Research on Robot Visual Navigation Technology', field: '机器人技术', difficulty: Difficulty.ADVANCED, type: TopicType.INNOVATION },
+    { title: '新型纳米材料的制备与表征', titleEn: 'Preparation and Characterization of Novel Nanomaterials', field: '新材料', difficulty: Difficulty.ADVANCED, type: TopicType.INNOVATION },
+    { title: '智能制造系统的优化与调度', titleEn: 'Optimization and Scheduling of Intelligent Manufacturing Systems', field: '智能制造', difficulty: Difficulty.INTERMEDIATE, type: TopicType.ENTERPRISE },
+    { title: '大数据分析平台的设计与开发', titleEn: 'Design and Development of Big Data Analytics Platform', field: '大数据', difficulty: Difficulty.INTERMEDIATE, type: TopicType.ENTERPRISE },
+    { title: '云计算环境下的资源调度算法', titleEn: 'Resource Scheduling Algorithms in Cloud Computing Environment', field: '云计算', difficulty: Difficulty.ADVANCED, type: TopicType.INNOVATION },
+    { title: '区块链技术在供应链管理中的应用', titleEn: 'Application of Blockchain Technology in Supply Chain Management', field: '区块链', difficulty: Difficulty.INTERMEDIATE, type: TopicType.ENTERPRISE },
+    { title: '量子计算算法的研究与实现', titleEn: 'Research and Implementation of Quantum Computing Algorithms', field: '量子计算', difficulty: Difficulty.ADVANCED, type: TopicType.INNOVATION },
+    { title: '机器学习在医疗诊断中的应用', titleEn: 'Application of Machine Learning in Medical Diagnosis', field: '机器学习', difficulty: Difficulty.INTERMEDIATE, type: TopicType.INNOVATION },
   ]
 
   const topics = []
@@ -180,6 +195,9 @@ async function main() {
         expectedOutcomes: ['完成系统原型', '撰写研究论文', '申请相关专利'],
         field: template.field,
         difficulty: template.difficulty,
+        type: i % 3 === 0 ? TopicType.ENTERPRISE : TopicType.INNOVATION,
+        companyName: i % 3 === 0 ? '华为技术有限公司' : null,
+        companyMentor: i % 3 === 0 ? '张工程师' : null,
       }
     })
     topics.push(topic)
@@ -247,9 +265,11 @@ async function main() {
           projectId: project.id,
           name: milestone.name,
           description: `完成${milestone.name}相关工作`,
-          dueDate: new Date(project.startDate.getTime() + milestone.days * 24 * 60 * 60 * 1000),
-          completed: Math.random() > 0.5 && milestone.days < 90,
-          completedAt: Math.random() > 0.5 && milestone.days < 90 ? new Date() : null,
+          plannedDate: new Date(project.startDate.getTime() + milestone.days * 24 * 60 * 60 * 1000),
+          status: Math.random() > 0.5 && milestone.days < 90 ? MilestoneStatus.COMPLETED : MilestoneStatus.IN_PROGRESS,
+          actualDate: Math.random() > 0.5 && milestone.days < 90 ? new Date() : null,
+          progress: Math.random() > 0.5 && milestone.days < 90 ? 100 : Math.floor(Math.random() * 80),
+          order: milestones.indexOf(milestone),
         }
       })
     }
@@ -329,6 +349,175 @@ async function main() {
     evaluationCount++
   }
   console.log(`✅ 创建了 ${evaluationCount} 条综合评价记录`)
+
+  // Create Labs
+  const labs = []
+    const labData = [
+    { name: '智能机器人实验室', nameEn: 'Intelligent Robotics Lab', code: 'IRL', researchAreas: ['机器人控制', '计算机视觉', '人机交互'] },
+    { name: '人工智能与机器学习实验室', nameEn: 'AI and Machine Learning Lab', code: 'AIML', researchAreas: ['深度学习', '自然语言处理', '计算机视觉'] },
+    { name: '物联网技术实验室', nameEn: 'IoT Technology Lab', code: 'IoT', researchAreas: ['传感器网络', '边缘计算', '智能家居'] },
+    { name: '智能制造实验室', nameEn: 'Smart Manufacturing Lab', code: 'SM', researchAreas: ['数字孪生', '工业4.0', '智能优化'] },
+    { name: '新材料研究实验室', nameEn: 'Advanced Materials Lab', code: 'AML', researchAreas: ['纳米材料', '复合材料', '功能材料'] },
+  ]
+
+  for (const labInfo of labData) {
+    const director = professors[Math.floor(Math.random() * professors.length)]
+    const lab = await prisma.lab.create({
+      data: {
+        name: labInfo.name,
+        nameEn: labInfo.nameEn,
+        code: labInfo.code,
+        directorId: director.id,
+        location: `科技楼${Math.floor(Math.random() * 5) + 1}楼${Math.floor(Math.random() * 20) + 101}室`,
+        capacity: Math.floor(Math.random() * 10) + 5,
+        description: `${labInfo.name}是我校重点建设的科研平台，致力于${labInfo.researchAreas.join('、')}等领域的前沿研究。`,
+        researchAreas: labInfo.researchAreas,
+        equipment: ['高性能计算集群', '3D打印机', '精密测量仪器', '实验平台'],
+        achievements: ['国家级科研项目5项', 'SCI论文30余篇', '发明专利10项'],
+      }
+    })
+    labs.push(lab)
+  }
+  console.log(`✅ 创建了 ${labs.length} 个实验室`)
+
+  // Create Mentor Applications for current academic year
+  const mentorApplications = []
+  const currentAcademicYear = `${currentYear}-${currentYear + 1}`
+  
+  // Select 30 students to create mentor applications
+  for (const student of students.slice(0, 30)) {
+    const shuffledProfessors = [...professors].sort(() => 0.5 - Math.random())
+    const firstChoice = shuffledProfessors[0]
+    const secondChoice = shuffledProfessors[1]
+    const thirdChoice = shuffledProfessors[2]
+    
+    const application = await prisma.mentorApplication.create({
+      data: {
+        studentId: student.id,
+        academicYear: currentAcademicYear,
+        firstChoiceId: firstChoice.id,
+        firstReason: `我对${firstChoice.name}教授的研究方向非常感兴趣，希望能在其指导下开展科研工作。`,
+        secondChoiceId: secondChoice.id,
+        secondReason: `${secondChoice.name}教授在相关领域有深厚的学术造诣，我希望能向其学习。`,
+        thirdChoiceId: thirdChoice.id,
+        thirdReason: `${thirdChoice.name}教授的研究方向与我的兴趣相符。`,
+        personalStatement: '本人学习成绩优秀，对科研充满热情，具有较强的学习能力和创新意识。',
+        researchInterest: '人工智能、机器学习、深度学习',
+        status: MentorApplicationStatus.PENDING,
+      }
+    })
+    mentorApplications.push(application)
+  }
+  console.log(`✅ 创建了 ${mentorApplications.length} 个导师申请`)
+
+  // Create Form Templates
+  const formTemplates = [
+    {
+      name: '导师信息表',
+      code: 'MENTOR_INFO',
+      category: FormCategory.MENTOR_INFO,
+      schema: {
+        fields: [
+          { name: 'name', type: 'text', label: '姓名', required: true },
+          { name: 'employeeId', type: 'text', label: '工号', required: true },
+          { name: 'title', type: 'select', label: '职称', required: true, options: ['教授', '副教授', '讲师'] },
+          { name: 'department', type: 'text', label: '院系', required: true },
+          { name: 'researchAreas', type: 'array', label: '研究方向', required: true },
+          { name: 'maxStudents', type: 'number', label: '可指导学生数', required: true },
+        ]
+      }
+    },
+    {
+      name: '学生选择导师意向书',
+      code: 'MENTOR_APPLICATION',
+      category: FormCategory.MENTOR_APPLICATION,
+      schema: {
+        fields: [
+          { name: 'firstChoice', type: 'select', label: '第一志愿导师', required: true },
+          { name: 'firstReason', type: 'textarea', label: '选择理由', required: true },
+          { name: 'secondChoice', type: 'select', label: '第二志愿导师', required: true },
+          { name: 'secondReason', type: 'textarea', label: '选择理由', required: true },
+          { name: 'thirdChoice', type: 'select', label: '第三志愿导师', required: false },
+          { name: 'thirdReason', type: 'textarea', label: '选择理由', required: false },
+        ]
+      }
+    },
+    {
+      name: '实验室轮转申请表',
+      code: 'LAB_ROTATION',
+      category: FormCategory.LAB_ROTATION,
+      schema: {
+        fields: [
+          { name: 'semester', type: 'text', label: '学期', required: true },
+          { name: 'firstLab', type: 'select', label: '第一志愿实验室', required: true },
+          { name: 'secondLab', type: 'select', label: '第二志愿实验室', required: true },
+          { name: 'thirdLab', type: 'select', label: '第三志愿实验室', required: false },
+          { name: 'reason', type: 'textarea', label: '申请理由', required: true },
+        ]
+      }
+    },
+  ]
+
+  for (const template of formTemplates) {
+    await prisma.formTemplate.create({
+      data: {
+        name: template.name,
+        code: template.code,
+        category: template.category,
+        schema: template.schema,
+        active: true,
+        version: 1,
+      }
+    })
+  }
+  console.log(`✅ 创建了 ${formTemplates.length} 个表单模板`)
+
+  // Create Project Milestones with alerts
+  let projectMilestoneCount = 0
+  for (const project of projects.slice(0, 10)) { // Add milestones for first 10 projects
+    const milestoneTypes = [
+      { type: MilestoneType.LITERATURE_REVIEW, name: '文献调研', days: 30 },
+      { type: MilestoneType.PROPOSAL, name: '开题报告', days: 45 },
+      { type: MilestoneType.EXPERIMENT_DESIGN, name: '实验设计', days: 60 },
+      { type: MilestoneType.DATA_COLLECTION, name: '数据收集', days: 90 },
+      { type: MilestoneType.PHASE_SUMMARY, name: '阶段总结', days: 120 },
+      { type: MilestoneType.RESULT_OUTPUT, name: '成果产出', days: 150 },
+    ]
+
+    for (const milestone of milestoneTypes) {
+      const dueDate = new Date(project.startDate.getTime() + milestone.days * 24 * 60 * 60 * 1000)
+      const now = new Date()
+      const daysUntilDue = Math.ceil((dueDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24))
+      
+      let status = MilestoneProgressStatus.PENDING
+      let alertLevel = AlertLevel.GREEN
+      
+      if (daysUntilDue < 0) {
+        status = MilestoneProgressStatus.DELAYED
+        alertLevel = AlertLevel.RED
+      } else if (daysUntilDue < 7) {
+        status = MilestoneProgressStatus.AT_RISK
+        alertLevel = AlertLevel.YELLOW
+      } else if (Math.random() > 0.7) {
+        status = MilestoneProgressStatus.COMPLETED
+      }
+
+      await prisma.projectMilestone.create({
+        data: {
+          projectId: project.id,
+          name: milestone.name,
+          nameEn: milestone.type,
+          type: milestone.type,
+          status,
+          alertLevel,
+          dueDate,
+          completedAt: status === MilestoneProgressStatus.COMPLETED ? new Date() : null,
+        }
+      })
+      projectMilestoneCount++
+    }
+  }
+  console.log(`✅ 创建了 ${projectMilestoneCount} 个项目里程碑`)
 
   console.log('\n✨ 种子数据生成完成！')
   console.log('\n📧 测试账号（密码均为 password123）:')
